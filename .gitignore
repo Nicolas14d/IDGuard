@@ -1,0 +1,16 @@
+@"
+# Entorno virtual de Python
+venv/
+__pycache__/
+*.pyc
+
+# Binarios y compilados de Maven / Spring Boot
+target/
+*.class
+*.jar
+
+# Archivos de configuración de VS Code y entorno local
+.vscode/
+.idea/
+*.log
+"@ | Out-File -Encoding utf8 .gitignore

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>IDGuardia · Detecci&#243;n de suplantaci&#243;n de identidad</title>
+<style>
+/* ========== PALETA & BASE ========== */
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif}
+:root{
+  --primary:#0e7a8a;--primary-dark:#0a5f6b;--primary-soft:#e3f4f6;
+  --safe:#16a34a;--safe-soft:#e6f6ec;
+  --danger:#dc2626;--danger-soft:#fdecec;
+  --warn:#f59e0b;--warn-soft:#fef4e0;
+  --ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f4f7fb;--card:#fff;
+}
+body.dark{--ink:#e5e7eb;--muted:#94a3b8;--line:#334155;--bg:#0b1220;--card:#111827}
+*{transition:background .3s,color .3s}
+body{background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+/* ========== SIDEBAR ========== */
+.sidebar{width:270px;background:linear-gradient(180deg,var(--primary-dark),var(--primary));color:#fff;padding:20px 16px;position:fixed;top:0;bottom:0;left:0;z-index:20;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.15)}
+.brand .logo{width:46px;height:46px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer}
+.brand h1{font-size:18px;font-weight:800;letter-spacing:.3px}
+.brand small{display:block;font-weight:400;font-size:11px;opacity:.85}
+.nav{display:flex;flex-direction:column;gap:6px;flex:1;overflow-y:auto}
+.nav button{background:transparent;border:none;color:#dff0f3;text-align:left;padding:12px 13px;border-radius:11px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:11px;transition:.2s;font-weight:600}
+.nav button .ic{width:20px;text-align:center}
+.nav button:hover{background:rgba(255,255,255,.12)}
+.nav button.active{background:#fff;color:var(--primary-dark);box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.security-bar{margin-top:10px;background:rgba(255,255,255,.12);border-radius:13px;padding:12px}
+.security-bar .t{display:flex;justify-content:space-between;font-size:12px;font-weight:700}
+.security-bar .bar{height:9px;background:rgba(255,255,255,.2);border-radius:7px;margin-top:7px;overflow:hidden}
+.security-bar .fill{height:100%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:7px;transition:width .8s}
+/* ========== MAIN ========== */
+.main{flex:1;margin-left:270px;padding:22px 24px 50px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.topbar h2{font-size:22px;font-weight:800}
+.chip-safety{background:var(--safe-soft);color:var(--safe);font-weight:800;padding:7px 12px;border-radius:999px;font-size:12px}
+.top-actions{display:flex;gap:8px;align-items:center}
+.btn-icon{background:#fff;border:1px solid var(--line);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px}
+.btn-icon:hover{transform:scale(1.05)}
+/* ========== KPIS ========== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;overflow:hidden;transition:.2s;box-shadow:0 2px 7px rgba(15,23,42,.04)}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.07)}
+.kpi .label{color:var(--muted);font-size:12px;font-weight:600}
+.kpi .value{font-size:28px;font-weight:800;margin-top:5px;line-height:1}
+.kpi .delta{font-size:11px;margin-top:7px;font-weight:700}
+.kpi.up .delta{color:var(--safe)} .kpi.danger .delta{color:var(--danger)}
+/* ========== PANELS ========== */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 7px rgba(15,23,42,.04)}
+.panel h3{font-size:17px;font-weight:800;margin-bottom:3px}
+.panel .sub{color:var(--muted);font-size:12px;margin-bottom:16px}
+/* ========== INPUTS RF01 ========== */
+.input-group{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.input-group input[type="file"]{flex:1;min-width:200px;padding:11px;border:1.5px dashed var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+.field{margin-bottom:12px}
+.field label{font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--ink)}
+.field input,.field textarea,.field select{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;transition:.2s;background:var(--card);color:var(--ink)}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+/* ========== TABS ========== */
+.tabs{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.tabs button{padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-weight:700;cursor:pointer;font-size:13px}
+.tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+/* ========== RESULTADOS RF03 RF04 RF05 ========== */
+.result-banner{margin-top:16px;padding:18px;border-radius:14px;font-weight:700;display:none;border:2px solid}
+.result-banner.good{background:var(--safe-soft);color:var(--safe);border-color:var(--safe)}
+.result-banner.bad{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.result-banner.warn{background:var(--warn-soft);color:#92400e;border-color:var(--warn)}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px}
+.feat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.feat .lbl{font-size:11px;color:var(--muted);font-weight:700}
+.feat .val{font-size:15px;font-weight:800;margin-top:4px}
+.explain{margin-top:14px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:13px}
+.explain b{color:var(--ink)} .explain li{margin-left:18px;margin-top:4px}
+/* ========== ALERTAS ========== */
+.alert{display:flex;gap:12px;align-items:flex-start;padding:13px;border-radius:13px;margin-bottom:9px;border:1px solid var(--line);background:var(--card)}
+.alert.sev-high{border-left:5px solid var(--danger);background:var(--danger-soft)}
+.alert.sev-mid{border-left:5px solid var(--warn);background:var(--warn-soft)}
+.alert.sev-low{border-left:5px solid var(--safe);background:var(--safe-soft)}
+.alert .icon{font-size:20px;line-height:1}
+.alert .body{flex:1}
+.alert .title{font-weight:800;font-size:14px}
+.alert .meta{color:var(--muted);font-size:11px;margin-top:2px}
+.alert .actions{margin-top:7px;display:flex;gap:7px;flex-wrap:wrap}
+.btn{background:var(--primary);color:#fff;border:none;padding:8px 12px;border-radius:9px;font-weight:700;font-size:12px;cursor:pointer;transition:.2s}
+.btn:hover{background:var(--primary-dark);transform:scale(1.02)}
+.btn.ghost{background:#eef2f7;color:var(--ink)} .dark .btn.ghost{background:#334155;color:#e5e7eb}
+.btn.safe{background:var(--safe)} .btn.safe:hover{background:#14833b}
+.btn.danger{background:var(--danger)} .btn.danger:hover{background:#b91c1c}
+.pill{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.3px}
+.pill.high{background:var(--danger);color:#fff}.pill.mid{background:var(--warn);color:#fff}.pill.low{background:var(--safe);color:#fff}
+/* ========== STREAM ========== */
+.stream{max-height:280px;overflow-y:auto;padding-right:5px}
+.stream::-webkit-scrollbar{width:7px}.stream::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+.feed-item{display:flex;gap:10px;padding:10px 3px;border-bottom:1px dashed var(--line);align-items:center;font-size:13px}
+.feed-item .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot.block{background:var(--danger)}.dot.scan{background:var(--primary)}.dot.safe{background:var(--safe)}
+.feed-item .time{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+/* ========== TABLE ========== */
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+th{font-weight:800;color:var(--muted);font-size:12px}
+/* ========== BOTTOM NAV ========== */
+.bottom-nav{display:none}
+@media(max-width:900px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:18px 14px 85px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+    padding:9px 5px calc(9px + env(safe-area-inset-bottom));z-index:30;justify-content:space-around}
+  .bottom-nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer}
+  .bottom-nav button.active{color:var(--primary)}
+  .bottom-nav .ic{font-size:18px}
+}
+@media(max-width:480px){.kpis{grid-template-columns:1fr}}
+.loading{display:none;color:var(--muted);font-weight:600;font-size:12px;margin-top:9px}
+@keyframes pulse{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
+.loading.show{display:block;animation:pulse 1s infinite}
+/* ========== TOAST ========== */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 16px;border-radius:11px;font-weight:700;font-size:12px;opacity:0;pointer-events:none;transition:.3s;z-index:60}
+.toast.show{opacity:1;bottom:24px}
+/* ========== MODAL ========== */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+.modal.show{display:flex}
+.modal .box{background:var(--card);border-radius:18px;padding:20px;max-width:480px;width:92%;max-height:90vh;overflow-y:auto}
+.modal .box h3{font-size:18px;font-weight:800;margin-bottom:7px}
+.modal .close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.privacy-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo" onclick="navigate('dashboard')" title="IDGuardia">🛡️</div>
+    <div><h1>IDGuardia</h1><small>Anti-suplantaci&#243;n</small></div>
+  </div>
+  <nav class="nav">
+    <button class="active" data-view="dashboard" onclick="navigate('dashboard')"><span class="ic">📊</span>Panel</button>
+    <button data-view="analyzer" onclick="navigate('analyzer')"><span class="ic">🔍</span>Analizar (RF01–05)</button>
+    <button data-view="alerts" onclick="navigate('alerts')"><span class="ic">🔔</span>Alertas <span style="margin-left:auto;background:var(--danger);color:#fff;border-radius:999px;padding:1px 6px;font-size:10px" id="badgeAlerts">3</span></button>
+    <button data-view="logs" onclick="navigate('logs')"><span class="ic">📜</span>Logs (RF06)</button>
+    <button data-view="settings" onclick="navigate('settings')"><span class="ic">⚙️</span>Ajustes</button>
+    <button data-view="tips" onclick="navigate('tips')"><span class="ic">🎓</span>Aprende</button>
+  </nav>
+  <div class="security-bar">
+    <div class="t"><span>Protecci&#243;n</span><span id="scoreTxt">92</span></div>
+    <div class="bar"><div class="fill" id="scoreFill" style="width:92%"></div></div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="viewTitle">Panel general</h2>
+    <div class="top-actions">
+      <button class="btn-icon" onclick="toggleDark()" title="Modo oscuro">🌙</button>
+      <button class="btn-icon" onclick="openModal('exportModal')" title="Exportar logs">📤</button>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <section data-section="dashboard">
+    <div class="kpis">
+      <div class="kpi up"><div class="label">Amenazas bloqueadas</div><div class="value" id="kBlocked">3,214</div><div class="delta">▲ +18% esta semana</div></div>
+      <div class="kpi up"><div class="label">An&#225;lisis realizados</div><div class="value" id="kScans">48,902</div><div class="delta">▲ Latencia &lt;2s (RNF01)</div></div>
+      <div class="kpi danger"><div class="label">Alertas activas</div><div class="value" id="kAlerts">3</div><div class="delta">● 1 requiere acci&#243;n</div></div>
+      <div class="kpi up"><div class="label">Precisi&#243;n ML</div><div class="value">94%</div><div class="delta">▲ En pruebas (RNF02)</div></div>
+    </div>
+    <div class="panel">
+      <h3>🔔 Alertas preventivas (RF04)</h3>
+      <div class="sub">Notificaciones en tiempo real sobre posibles intentos de suplantaci&#243;n.</div>
+      <div id="alertContainer"></div>
+      <button class="btn" style="width:100%;margin-top:7px" onclick="navigate('alerts')">Ver todas</button>
+    </div>
+    <div class="panel">
+      <h3>🕒 Actividad reciente</h3>
+      <div class="stream" id="liveFeed"></div>
+    </div>
+  </section>
+
+  <!-- ===== ANALIZADOR RF01–RF05 ===== -->
+  <section data-section="analyzer" style="display:none">
+    <div class="panel">
+      <h3>🔍 Analizador de suplantaci&#243;n</h3>
+      <div class="sub">Captura de datos (RF01) · Extracci&#243;n de caracter&#237;sticas (RF02) · Clasificaci&#243;n ML (RF03) · Alerta (RF04) · Explicaci&#243;n (RF05)</div>
+
+      <div class="tabs">
+        <button class="active" data-tab="url" onclick="switchTab('url')">🌐 URL</button>
+        <button data-tab="text" onclick="switchTab('text')">💬 Texto</button>
+        <button data-tab="file" onclick="switchTab('file')">📎 Archivo (simulado)</button>
+      </div>
+
+      <form id="analyzeForm" onsubmit="analyze(event)">
+        <div class="input-group" id="fileInputWrap" style="display:none">
+          <input type="file" id="inputFile" accept=".txt,.pdf,.doc,.docx,.eml">
+        </div>
+        <div class="field" id="fieldURL">
+          <label for="inputURL">Enlace (URL)</label>
+          <input type="text" id="inputURL" placeholder="https://ejemplo.com/verificar-cuenta">
+        </div>
+        <div class="field" id="fieldText" style="display:none">
+          <label for="inputText">Mensaje de texto</label>
+          <textarea id="inputText" rows="4" placeholder="Pega aqu&#237; el mensaje sospechoso..."></textarea>
+        </div>
+        <button class="btn" type="submit" style="width:100%;padding:13px;font-size:14px;margin-top:6px">🔎 Analizar ahora</button>
+      </form>
+
+      <div class="loading" id="loader">Analizando con ML… (<span id="latencyTimer">0.0</span>s)</div>
+
+      <div class="result-banner" id="resultBanner"></div>
+
+      <div id="featuresPanel" style="display:none">
+        <h4 style="margin-top:16px;font-size:15px;font-weight:800">Caracter&#237;sticas extra&#237;das (RF02)</h4>
+        <div class="features-grid" id="featuresGrid"></div>
+        <div class="explain" id="explainBox"></div>
+        <div class="privacy-note">🔒 <b>Privacidad (RD01):</b> No almacenamos credenciales ni datos bancarios. Este an&#225;lisis es preventivo y no intrusivo (RD02).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ALERTAS ===== -->
+  <section data-section="alerts" style="display:none">
+    <div class="panel">
+      <h3>Centro de alertas (RF04)</h3>
+      <div class="sub">Todas las notificaciones preventivas generadas.</div>
+      <div id="alertContainerFull"></div>
+    </div>
+  </section>
+
+  <!-- ===== LOGS RF06 ===== -->
+  <section data-section="logs" style="display:none">
+    <div class="panel">
+      <h3>📜 Registro de eventos (Logs · RF06)</h3>
+      <div class="sub">Historial de an&#225;lisis y alertas (simulando MySQL). Exportable para auditor&#237;a.</div>
+      <table>
+        <thead><tr><th>Timestamp</th><th>Tipo</th><th>Entrada</th><th>Riesgo</th><th>Score</th></tr></thead>
+        <tbody id="logsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== CONFIGURACI&#211;N ===== -->
+  <section data-section="settings" style="display:none">
+    <div class="panel">
+      <h3>⚙️ Ajustes del sistema</h3>
+      <div class="sub">Preferencias de notificaciones y privacidad.</div>
+      <form onsubmit="saveSettings(event)">
+        <div class="field"><label>Nombre</label><input type="text" id="setName" required></div>
+        <div class="field"><label>Email</label><input type="email" id="setEmail" required></div>
+        <div class="field"><label>Notificaciones</label>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:5px">
+            <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="notEmail" checked> Email</label>
+            <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="notPush" checked> Push</label>
+          </div></div>
+        <button class="btn" type="submit" style="width:100%;padding:12px;font-size:14px">Guardar</button>
+      </form>
+      <div class="privacy-note" style="margin-top:12px">🔄 <b>Actualizaci&#243;n de patrones (RD03):</b> Las reglas de detecci&#243;n se actualizan peri&#243;dicamente para cubrir nuevos vectores de phishing.</div>
+    </div>
+  </section>
+
+  <!-- ===== CONSEJOS ===== -->
+  <section data-section="tips" style="display:none">
+    <div class="panel">
+      <h3>🎓 Educaci&#243;n en ciberseguridad</h3>
+      <div class="sub">Reconoce las se&#241;ales de suplantaci&#243;n antes de actuar.</div>
+      <div class="kpis">
+        <div class="kpi"><div class="label">🔴 Urgencia</div><div class="value" style="font-size:15px">"&#161;Act&#250;a YA!"</div><div class="delta">La prisa es su aliada</div></div>
+        <div class="kpi"><div class="label">🔴 Miedo</div><div class="value" style="font-size:15px">"Te bloquear&#225;n"</div><div class="delta">Te asustan para que no pienses</div></div>
+        <div class="kpi"><div class="label">🔴 Recompensa</div><div class="value" style="font-size:15px">"Ganaste un premio"</div><div class="delta">Si suena incre&#237;ble, es trampa</div></div>
+      </div>
+      <ul style="padding-left:20px;line-height:1.9;color:var(--ink);font-size:14px;margin-top:12px">
+        <li>Nunca compartas contrase&#241;as ni c&#243;digos SMS.</li>
+        <li>Verifica el dominio exacto antes de hacer clic.</li>
+        <li>Activa 2FA en cuentas importantes.</li>
+        <li>Pausa 10 segundos antes de actuar.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<!-- BOTTOM NAV MOVIL -->
+<nav class="bottom-nav">
+  <button class="active" data-view="dashboard" onclick="navigate('dashboard')"><span class="ic">📊</span>Panel</button>
+  <button data-view="analyzer" onclick="navigate('analyzer')"><span class="ic">🔍</span>Analizar</button>
+  <button data-view="alerts" onclick="navigate('alerts')"><span class="ic">🔔</span>Alertas</button>
+  <button data-view="logs" onclick="navigate('logs')"><span class="ic">📜</span>Logs</button>
+  <button data-view="settings" onclick="navigate('settings')"><span class="ic">⚙️</span>Ajustes</button>
+</nav>
+
+<!-- MODAL EXPORTAR -->
+<div class="modal" id="exportModal">
+  <button class="close" onclick="closeModal('exportModal')">&times;</button>
+  <div class="box">
+    <h3>📤 Exportar logs (RF06)</h3>
+    <p style="color:var(--muted);margin-bottom:12px;font-size:13px">Descarga el historial en JSON para auditor&#237;a o respaldo.</p>
+    <button class="btn" onclick="exportLogs()" style="width:100%;padding:12px;font-size:14px">Descargar JSON</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CAPA AJAX SIMULADA (lista para backend Java Spring) ================= */
+function mockAjax(endpoint, payload) {
+  if (endpoint === 'analyze') {
+    return fetch('http://localhost:8080/api/v1/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contenidoRaw: payload.url || payload.text || payload.file || '',
+        tipoContenido: payload.url ? 'URL' : (payload.text ? 'TEXTO_SMS' : 'CORREO'),
+        usuarioId: 'b1a2c3d4-0000-0000-0000-000000000002'
+      })
+    }).then(res => res.json());
+  }
+  
+  if (endpoint === 'saveSettings') {
+    return Promise.resolve({ ok: true, msg: '✅ Configuración guardada.' });
+  }
+}
+
+/* ================= ESTADO ================= */
+const alerts=[
+  {id:1,sev:'high',icon:'🚨',title:'Intento de suplantaci&#243;n: "tu cuenta ser&#225; suspendida"',meta:'Correo atribuido falsamente a tu banco · hace 12 min'},
+  {id:2,sev:'mid',icon:'⚠️',title:'Enlace sospechoso en SMS (smishing)',meta:'URL no oficial detectada · hace 45 min'},
+  {id:3,sev:'low',icon:'🟡',title:'Inicio de sesi&#243;n desde ubicaci&#243;n nueva',meta:'Verificamos que eras t&#250; · hace 2 h'},
+];
+const feedFeeds=[
+  {dot:'block',txt:'Bloqueado phishing con logotipo bancario falso',time:'hace 1 min'},
+  {dot:'scan',txt:'Analizando URL compartida por contacto',time:'hace 5 min'},
+  {dot:'safe',txt:'Correo verificado como leg&#237;timo',time:'hace 11 min'},
+];
+let logsData = [];
+let settings = {name:'Usuario',email:'usuario@ejemplo.com',notEmail:true,notPush:true};
+
+/* ================= RENDER ================= */
+function alertCard(a){
+  const sevLabel = a.sev==='high'?'Alta':(a.sev==='mid'?'Media':'Baja');
+  const sevCls = a.sev==='high'?'high':(a.sev==='mid'?'mid':'low');
+  return `<div class="alert sev-${a.sev}"><div class="icon">${a.icon}</div><div class="body">
+    <span class="pill ${sevCls}" style="margin-bottom:4px">PRIORIDAD ${sevLabel.toUpperCase()}</span>
+    <div class="title">${a.title}</div><div class="meta">${a.meta}</div><div class="actions">
+    <button class="btn ${a.sev==='high'?'danger':'safe'}" onclick="fakeResolve(${a.id})">✅ Tratada</button>
+    <button class="btn ghost" onclick="fakeDetail(${a.id})">Detalles</button></div></div></div>`;
+}
+function renderAlerts(){
+  const small = alerts.slice(0,2).map(a=>alertCard(a)).join('');
+  document.getElementById('alertContainer').innerHTML = small || '<p style="color:var(--muted);font-size:13px">🎉 Sin alertas pendientes.</p>';
+  document.getElementById('alertContainerFull').innerHTML = alerts.map(a=>alertCard(a)).join('') || '<p style="color:var(--muted);font-size:13px">🎉 Todo despejado.</p>';
+  document.getElementById('kAlerts').textContent = alerts.length;
+  document.getElementById('badgeAlerts').textContent = alerts.length;
+}
+function renderFeed(){
+  document.getElementById('liveFeed').innerHTML = feedFeeds.map(f=>`<div class="feed-item"><span class="dot ${f.dot}"></span><span>${f.txt}</span><span class="time">${f.time}</span></div>`).join('');
+}
+function renderLogs(){
+  document.getElementById('logsBody').innerHTML = logsData.slice().reverse().map(l=>`<tr><td>${l.ts}</td><td>${l.type}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.input}</td><td><span class="pill ${l.risk==='bad'?'high':(l.risk==='warn'?'mid':'low')}">${l.risk==='bad'?'Alto':(l.risk==='warn'?'Medio':'Bajo')}</span></td><td>${l.score}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:13px">Sin registros a&#250;n</td></tr>';
+}
+/* ================= NAVEGACI&#211;N ================= */
+const titles={'dashboard':'Panel general','analyzer':'Analizador (RF01–05)','alerts':'Alertas (RF04)','logs':'Logs (RF06)','settings':'Ajustes','tips':'Educaci&#243;n'};
+function navigate(v){
+  document.querySelectorAll('[data-section]').forEach(s=>s.style.display = s.dataset.section===v?'block':'none');
+  document.querySelectorAll('.nav button,[data-view]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(`button[data-view="${v}"]`).forEach(b=>b.classList.add('active'));
+  document.getElementById('viewTitle').textContent = titles[v];
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+/* ================= ANALIZADOR ================= */
+function switchTab(tab){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('fieldURL').style.display = tab==='url'?'block':'none';
+  document.getElementById('fieldText').style.display = tab==='text'?'block':'none';
+  document.getElementById('fileInputWrap').style.display = tab==='file'?'block':'none';
+  document.getElementById('inputURL').disabled = tab!=='url';
+  document.getElementById('inputText').disabled = tab!=='text';
+  document.getElementById('inputFile').disabled = tab!=='file';
+}
+function analyze(e){
+  e.preventDefault();
+  const url = document.getElementById('inputURL').value.trim();
+  const text = document.getElementById('inputText').value.trim();
+  const file = document.getElementById('inputFile').files[0] ? document.getElementById('inputFile').files[0].name : '';
+  const active = document.querySelector('.tabs button.active').dataset.tab;
+  const payload = active==='url'?(url||' '):(active==='text'?(text||' '):(file||'archivo.txt'));
+  const banner = document.getElementById('resultBanner');
+  const featuresPanel = document.getElementById('featuresPanel');
+  banner.style.display='none'; featuresPanel.style.display='none';
+  document.getElementById('loader').classList.add('show');
+  let timer = 0, interval = setInterval(()=>{timer+=0.1;document.getElementById('latencyTimer').textContent=timer.toFixed(1);},100);
+  mockAjax('analyze',{url:active==='url'?payload:'',text:active==='text'?payload:'',file:active==='file'?payload:''}).then(res=>{
+    clearInterval(interval);
+    document.getElementById('loader').classList.remove('show');
+    banner.className='result-banner '+res.risk;
+    banner.innerHTML = `${res.msg} <span style="font-size:11px;font-weight:700;opacity:.8"> · Latencia: ${res.latency}s (RNF01: &lt;2s)</span>`;
+    banner.style.display='block';
+    // RF02: caracter&#237;sticas
+    const domain = payload.match(/https?:\/\/([^\/\s]+)/i);
+    const d = domain?domain[1]:'N/A';
+    const features = [
+      {lbl:'Longitud URL',val:payload.length},
+      {lbl:'Dominio',val:d},
+      {lbl:'Palabras sospechosas',val:payload.toLowerCase().split(' ').filter(w=>['urgente','verificar','bloque','premio','gana','clave','pin'].some(k=>w.includes(k))).length},
+      {lbl:'Score ML',val:res.score+'/100'},
+    ];
+    document.getElementById('featuresGrid').innerHTML = features.map(f=>`<div class="feat"><div class="lbl">${f.lbl}</div><div class="val">${f.val}</div></div>`).join('');
+    // RF05: explicaci&#243;n
+    document.getElementById('explainBox').innerHTML = `<b>Motivos de la clasificaci&#243;n (RF05):</b><ul>${res.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
+    featuresPanel.style.display='block';
+    // RF06: log
+    logsData.push({ts:new Date().toLocaleString(),type:active,input:payload.substring(0,70),risk:res.risk,score:res.score});
+    renderLogs();
+    showToast(res.risk==='bad'?'🚨 Alerta de riesgo alto':'✅ An&#225;lisis completado');
+  });
+}
+function fakeResolve(id){
+  const i = alerts.findIndex(a=>a.id===id);
+  if(i>-1){alerts.splice(i,1);renderAlerts();showToast('✅ Alerta tratada');}
+}
+function fakeDetail(id){alert('Detalles: IP, remitente, evidencia. En producci&#243;n se abre el caso completo.');}
+/* ================= SETTINGS ================= */
+function saveSettings(e){
+  e.preventDefault();
+  settings.name = document.getElementById('setName').value;
+  settings.email = document.getElementById('setEmail').value;
+  settings.notEmail = document.getElementById('notEmail').checked;
+  settings.notPush = document.getElementById('notPush').checked;
+  mockAjax('saveSettings',settings).then(res=>{showToast('✅ Guardado');});
+}
+/* ================= UTILS ================= */
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function exportLogs(){
+  const blob = new Blob(JSON.stringify({logs:logsData,alerts,settings},null,2),{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'IDGuardia_logs_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast('📥 Descarga iniciada');
+}
+function toggleDark(){document.body.classList.toggle('dark');showToast(document.body.classList.contains('dark')?'🌙 Modo oscuro':'☀️ Modo claro');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+/* ================= INIT ================= */
+renderAlerts();renderFeed();renderLogs();
+document.getElementById('setName').value=settings.name;
+document.getElementById('setEmail').value=settings.email;
+document.getElementById('notEmail').checked=settings.notEmail;
+document.getElementById('notPush').checked=settings.notPush;
+</script>
+</body>
+</html>
